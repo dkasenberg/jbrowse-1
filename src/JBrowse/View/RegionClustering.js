@@ -129,7 +129,7 @@ return declare( null, {
             case 1:
             case '+':
                 { reg.directionality = 'right-to-left';
-                  if (this.startOrEn == 'useStart') {
+                  if (this.startOrEnd == 'useStart') {
                     reg.start = feat.get('end') - this.queryLength/2;
                     reg.end   = feat.get('end') + this.queryLength/2;
                   }
@@ -141,7 +141,7 @@ return declare( null, {
             case -1:
             case '-':
                 { reg.directionality = 'left-to-right';
-                  if (this.startOrEn == 'useEnd') {
+                  if (this.startOrEnd == 'useEnd') {
                     reg.start = feat.get('end') - this.queryLength/2;
                     reg.end   = feat.get('end') + this.queryLength/2;
                   }
