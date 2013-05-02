@@ -301,7 +301,7 @@ return declare( null, {
         dom.create('div', {className: 'clusterHelpBoxExplanation2',
                            innerHTML: 'Heatmaps are then clustered using \
                                        k-means clustering. When the clustering \
-                                       is complete, an overlay will be oppened \
+                                       is complete, an overlay will be opened \
                                        to display the average of each cluster, \
                                        as well as the individual cluster members.'},
                     helpDiv);
