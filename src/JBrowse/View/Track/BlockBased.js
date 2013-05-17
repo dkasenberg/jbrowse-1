@@ -258,12 +258,11 @@ return declare( [Component,DetailsMixin,Destroyable],
         var i, leftBase;
         var maxHeight = 0;
 
-        //fill left, including existing blocks (to get their heights)
-
+        //fill left, including existing blocks (to get their heights)}
         leftBase = startBase + (bpPerBlock * (lastAttached - first));
         if(this.refSeq.circular) {
             var rightOfLastBlock = this.refSeq.end + bpPerBlock - (this.refSeq.end % bpPerBlock);
-            leftBase -= Math.floor((leftBase+1)/(rightOfLastBlock))*rightOfLastBlock;         
+            leftBase -= Math.floor((leftBase+1)/(rightOfLastBlock))*rightOfLastBlock;    
         }
         for (i = lastAttached; i >= first; i--) {
         //    leftBase = startBase + (bpPerBlock * (i - first));
@@ -277,7 +276,7 @@ return declare( [Component,DetailsMixin,Destroyable],
         leftBase = startBase + (bpPerBlock * (lastAttached + 1 - first));
         if(this.refSeq.circular) {
             var rightOfLastBlock = this.refSeq.end + bpPerBlock - (this.refSeq.end % bpPerBlock);
-            leftBase -= Math.floor((leftBase+1)/(rightOfLastBlock))*rightOfLastBlock;        
+            leftBase -= Math.floor((leftBase+1)/(rightOfLastBlock))*rightOfLastBlock;
         }
 
         // Fix a glitch that  occurs if the first block rendered of a circular refseq is the last (shortened) block
@@ -500,7 +499,7 @@ return declare( [Component,DetailsMixin,Destroyable],
             this.heightUpdate( this.labelHeight );
             return;
         }
-
+        
         if (this.blocks[blockIndex]) {
             this.heightUpdate(this.blockHeights[blockIndex], blockIndex);
             return;
@@ -625,14 +624,17 @@ return declare( [Component,DetailsMixin,Destroyable],
 
                 newBlocks[newIndex] = this.blocks[i];
                 if (newBlocks[newIndex]) {
-
+                    
                     var prevBlock = newBlocks[newIndex - 1];
                     var leftOffset =  this.refSeq.circular && newBlocks[newIndex].endBase > this.refSeq.end ?
                         this.widthPct - newBlocks[newIndex].width : 0;
                     newBlocks[newIndex].left = prevBlock ? prevBlock.left + prevBlock.width : 
                         newBlocks[newIndex].left + delta*this.widthPct;
+                    newBlocks[newIndex].domNode.style.left = newBlocks[newIndex].left + "%";/**/
+                    /*
+                    newBlocks[newIndex].left = this.genomeView.pxToPercent(this.genomeView.blockIndexToPx(newIndex));
                     newBlocks[newIndex].domNode.style.left = newBlocks[newIndex].left + "%";
-                    
+                    /**/
                 }
                 newHeights[newIndex] = this.blockHeights[i];
             }

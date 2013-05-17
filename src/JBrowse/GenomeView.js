@@ -130,6 +130,10 @@ var GenomeView = function( browser, elem, stripeWidth, refseq, zoomLevel ) {
     //to the beginning of the first active stripe
     //  should always be a multiple of stripeWidth
     this.offset = 0;
+
+    // How far (in screenwidths) the offset is from the first block rendered.
+    this.offsetMargin = 1;
+
     //largest value for the sum of this.offset and this.getX()
     //this prevents us from scrolling off the right end of the ref seq
     this.maxLeft = this.bpToPx(this.ref.end+1) - this.getWidth()*(1-this.maxPercentOffSeq); //MOD
@@ -300,7 +304,6 @@ var GenomeView = function( browser, elem, stripeWidth, refseq, zoomLevel ) {
  * @returns {Object} containing ref, start, and end members for the currently displayed location
  */
 GenomeView.prototype.visibleRegion = function() {
-    //alert(this.x + "\n" + this.offset + "\n" + this.pxPerBp + "\n" + this.minVisible());
     return {
                ref:   this.ref.name,
                start: this.minVisible(),
@@ -909,7 +912,7 @@ GenomeView.prototype.dragEnd = function(event) {
     this.showCoarse();
 
     this.scrollUpdate();
-    this.showVisibleBlocks(true);
+    //this.showVisibleBlocks(true);
 
     // wait 100 ms before releasing our drag indication, since onclick
     // events from during the drag might fire after the dragEnd event
@@ -1035,7 +1038,6 @@ GenomeView.prototype.setLocation = function(refseq, startbp, endbp) {
     }
     this.stripeWidth = (this.stripeWidthForZoom(this.curZoom) / this.zoomLevels[this.curZoom]) * this.pxPerBp;
     this.instantZoomUpdate();
-    //alert("setLoc called centerAtBase\n" + (startbp+endbp)/2);
     this.centerAtBase((startbp + endbp) / 2, true);
 };
 
@@ -1054,21 +1056,29 @@ GenomeView.prototype.instantZoomUpdate = function() {
         (this.stripeCount * this.stripeWidth) + "px";
     this.zoomContainer.style.width =
         (this.stripeCount * this.stripeWidth) + "px";
-    this.maxOffset =
-        this.bpToPx(this.ref.end) - this.stripeCount * this.stripeWidth;
+    //this.maxOffset =
+    //    this.bpToPx(this.ref.end) - this.stripeCount * this.stripeWidth; //Unnecessary line?
     this.maxLeft = this.bpToPx(this.ref.end+1) - this.getWidth()*(1-this.maxPercentOffSeq); //MOD
     this.minLeft = this.bpToPx(this.ref.start) - this.getWidth()*this.maxPercentOffSeq; //MOD
 };
 
 GenomeView.prototype.centerAtBase = function(base, instantly) {
-    if(!(this.ref.circular)) base = Math.min(Math.max(base, this.ref.start), this.ref.end);
+    base = this.ref.circular ? base : Math.min(Math.max(base, this.ref.start), this.ref.end);
     if (instantly) {
         var pxDist = this.bpToPx(base);
-        var containerWidth = this.stripeCount * this.stripeWidth;
-        var stripesLeft = Math.floor((pxDist - (containerWidth / 2)) / this.stripeWidth);
-        this.offset = stripesLeft * this.stripeWidth;
-        this.setX(pxDist - this.offset - (this.getWidth() / 2));
+        //var containerWidth = this.stripeCount * this.stripeWidth;
+        //var stripesLeft = Math.floor((pxDist - (containerWidth / 2)) / this.stripeWidth);
+        //this.offset = stripesLeft * this.stripeWidth;
+        
+        var newAbsX = pxDist - this.getWidth()/2;
+
+        var x = 3*this.getWidth();
+        this.setX(x);
+        this.offset = newAbsX - this.getX();
+
+        //this.setX(newAbsX - this.offset);
         this.trackIterate(function(track) { track.clear(); });
+        
         this.showVisibleBlocks(true);
         this.showCoarse();
     } else {
@@ -1091,7 +1101,6 @@ GenomeView.prototype.centerAtBase = function(base, instantly) {
                    distance);
         } else {
             //we're moving far away, move instantly
-            //alert("centerAtBase called itself recursively\n" + base);
             this.centerAtBase(base, true);
         }
     }
@@ -1294,7 +1303,6 @@ GenomeView.prototype.overview_absXtoBp = function(x) {
  */
 GenomeView.prototype.scaleClicked = function( evt ) {
     var bp = this.absXtoBp(evt.clientX);
-    //alert("scaleClicked called cab\n" + bp);
 
     this.scaleClickedTimeout = window.setTimeout( dojo.hitch( this, function() {
         this.centerAtBase( bp );
@@ -1311,7 +1319,6 @@ GenomeView.prototype.thumbMoved = function(mover) {
     var pxWidth = parseInt(this.locationThumb.style.width);
     var pxCenter = pxLeft + (pxWidth / 2);
     if(this.ref.circular && pxCenter > this.overviewBox.w) pxCenter -= this.overviewBox.w;
-    //alert("thumbMoved called cab\n" + this.overviewBox.w + "\n" + pxLeft + " " + pxWidth + "\n" + ((pxCenter / this.overviewBox.w) * (this.ref.end - this.ref.start)) + this.ref.start);
     this.centerAtBase(((pxCenter / this.overviewBox.w) * (this.ref.end - this.ref.start)) + this.ref.start);
     this.noOverviewClick = true;
 };
@@ -1861,6 +1868,7 @@ GenomeView.prototype._unsetPosBeforeZoom = function() {
 };
 
 GenomeView.prototype.zoomUpdate = function(zoomLoc, fixedBp) {
+    fixedBp = this.ref.circular ? this.wrapBp(fixedBp, 1) : fixedBp;
     var eWidth = this.elem.clientWidth;
     var centerPx = this.bpToPx(fixedBp) - (zoomLoc * eWidth) + (eWidth / 2);
     // stripeWidth: pixels per block
@@ -1869,19 +1877,22 @@ GenomeView.prototype.zoomUpdate = function(zoomLoc, fixedBp) {
         (this.stripeCount * this.stripeWidth) + "px";
     this.zoomContainer.style.width =
         (this.stripeCount * this.stripeWidth) + "px";
-    var centerStripe = Math.round(centerPx / this.stripeWidth);
-    var firstStripe = (centerStripe - ((this.stripeCount) / 2)) | 0;
-    this.offset = firstStripe * this.stripeWidth;
-    this.maxOffset = this.bpToPx(this.ref.end+1) - this.stripeCount * this.stripeWidth;
+    //var centerStripe = this.pxToBlockIndex(centerPx, false); //Math.round(centerPx / this.stripeWidth);
+    //var firstStripe = (centerStripe - ((this.stripeCount) / 2)) | 0;
+
+
+    //this.offset = this.blockIndexToPx(firstStripe, false);
+    //this.maxOffset = this.bpToPx(this.ref.end+1) - this.stripeCount * this.stripeWidth; //Unnecessary line?
     this.maxLeft = this.bpToPx(this.ref.end+1) - this.getWidth()*(1-this.maxPercentOffSeq); //MOD
     this.minLeft = this.bpToPx(this.ref.start) - this.getWidth()*this.maxPercentOffSeq; //MOD
+
     this.zoomContainer.style.left = "0px";
     this.setX((centerPx - this.offset) - (eWidth / 2));
 
     dojo.forEach(this.uiTracks, function(track) { track.clear(); });
 
     this.trackIterate( function(track) {
-        track.endZoom( this.pxPerBp,Math.round(this.stripeWidth / this.pxPerBp));
+        track.endZoom( this.pxPerBp,this._bpPerBlock());
     });
 
     this.showVisibleBlocks(true);
@@ -1890,36 +1901,32 @@ GenomeView.prototype.zoomUpdate = function(zoomLoc, fixedBp) {
 };
 
 GenomeView.prototype.scrollUpdate = function() {
+
     var x = this.getX();
-    var numStripes = this.stripeCount;
-    var cWidth = numStripes * this.stripeWidth;
-    var eWidth = this.getWidth();
-    //dx: horizontal distance between the centers of
-    //this.scrollContainer and this.elem
-    var dx = (cWidth / 2) - ((eWidth / 2) + x);
-    //If dx is negative, we add stripes on the right, if positive,
+    var leftVisible = this.leftBlock();
+    var oldLeftVisible = 0;
+    while (!(this.staticTrack.blocks[oldLeftVisible]) && oldLeftVisible < this.staticTrack.numBlocks) oldLeftVisible++;
+
+
+    //If dStripes is negative, we add stripes on the right, if positive,
     //add on the left.
     //We remove stripes from the other side to keep cWidth the same.
-    //The end goal is to minimize dx while making sure the surviving
+    //The end goal is to minimize dStripes while making sure the surviving
     //stripes end up in the same place.
+    var dStripes = oldLeftVisible - leftVisible;
 
-    var dStripes = (dx / this.stripeWidth) | 0;
-    if (0 == dStripes) return;
-    var changedStripes = Math.abs(dStripes);
+    if(dStripes == 0) return;
 
-    var newOffset = this.offset - (dStripes * this.stripeWidth);
+    var newOffset = this.blockIndexToPx(this.pxToBlockIndex(this.offset + this.offsetMargin*this.getWidth()) - dStripes) - this.offsetMargin*this.getWidth();
+    if(this.offset == newOffset) return;
+
+    var newX = x + this.offset - newOffset;
+    this.offset = newOffset;
 
     this.trackIterate(function(track) { track.moveBlocks(dStripes); });
 
-    if (this.offset == newOffset) return;
-    this.offset = newOffset;
-
-
-
-    var newX = x + (dStripes * this.stripeWidth);
     this.updateStaticElements( { x: newX } );
     this.rawSetX(newX);
-    var firstVisible = (newX / this.stripeWidth) | 0;
 };
 
 GenomeView.prototype.trackHeightUpdate = function(trackName, height) {
@@ -1957,27 +1964,90 @@ GenomeView.prototype.trackHeightUpdate = function(trackName, height) {
     this.updateStaticElements({ height: this.getHeight() });
 };
 
+
+GenomeView.prototype.pxToPercent = function(px) {
+  return 100*px/parseInt(this.scrollContainer.style.width);
+}
+
+// Maps a base pair to the current index of the block containing it.
+GenomeView.prototype.bpToBlockIndex = function(bp) {
+  return this._toBlockIndex(bp) - this._toBlockIndex(this.pxToBp(this.offset));
+}
+
+// Helper function that returns the block index of the given base pair, not considering this.offset
+GenomeView.prototype._toBlockIndex = function(bp) {
+  var endBlock = Math.ceil(this.ref.end/this._bpPerBlock());
+  return Math.floor(this.wrapBp(bp,1)/this._bpPerBlock()) + this.numWraps(bp)*endBlock;
+}
+
+// Calculates the current number of base pairs per block.
+GenomeView.prototype._bpPerBlock = function() {
+  return Math.round(this.stripeWidth/this.pxPerBp);
+}
+
+// Maps an x-value (in pixels) to the current index of the block containing it.
+// considerOffset should be true if we're measuring a distance that doesn't already include this.offset built-in
+// e.g. a value of this.getPosition.x() or a distance between two points, in pixels.
+// it should be false if we're measuring an absolute distance from bp 0 to a given point, ie this.bpToPx(some bp)
+GenomeView.prototype.pxToBlockIndex = function(px, considerOffset) {
+  if(considerOffset === undefined) considerOffset = true;
+  var offset = considerOffset ? this.offset : 0;
+  return this.bpToBlockIndex(this.pxToBp(px+offset));
+}
+
+// Returns the start base pair of the block at blockIndex.
+GenomeView.prototype.blockIndexToBp = function(blockIndex) {
+  blockIndex += this._toBlockIndex(this.pxToBp(this.offset));
+  var endBlock = Math.ceil(this.ref.end/this._bpPerBlock());
+  var numWraps = Math.floor(blockIndex/endBlock);
+  return numWraps*this.ref.end + this._bpPerBlock()*(blockIndex - numWraps*endBlock);
+}
+
+// Returns the pixel start coordinate of the block at blockIndex.
+// If considerOffset is true, returns a relative position (an x-value that can be used for setX, for example).
+// If it is false, returns an absolute position in terms of the first bp (necessary, e.g., when setting this.offset)
+GenomeView.prototype.blockIndexToPx = function(blockIndex, considerOffset) {
+  if(considerOffset === undefined) considerOffset = true;
+  var offset = considerOffset ? this.offset : 0;
+  return this.bpToPx(this.blockIndexToBp(blockIndex))-offset;
+}
+
+// Returns the number of times the given bp coordinate is "wrapped around" the end coordinate (0 if between ref.start and ref.end)
+GenomeView.prototype.numWraps = function(bp, offset) {
+  if(offset === undefined) offset = 1;
+  return Math.round((bp - this.wrapBp(bp,offset))/(this.ref.end-this.ref.start));
+}
+
+GenomeView.prototype.leftBlock = function(absolute, x) {
+  if(x === undefined) x = this.getPosition().x;
+  if(absolute === undefined) absolute = false;
+  return Math.max(0,this.pxToBlockIndex(x - this.drawMargin*this.getWidth(), !absolute));
+}
+
+GenomeView.prototype.rightBlock = function(absolute,x) {
+  if(x === undefined) x = this.getPosition().x;
+  if(absolute === undefined) absolute = false;
+  return this.pxToBlockIndex(x +((1 + this.drawMargin)*this.getWidth()), !absolute);
+}
+
+
 GenomeView.prototype.showVisibleBlocks = function(updateHeight, pos, startX, endX) {
     if (pos === undefined) pos = this.getPosition();
-    if (startX === undefined) startX = pos.x - (this.drawMargin * this.getWidth());
-    if (endX === undefined) endX = pos.x + ((1 + this.drawMargin) * this.getWidth());
 
-    var leftVisible = Math.max(0, (startX / this.stripeWidth) | 0);
-    var rightVisible = Math.min(this.stripeCount - 1,
-                               (endX / this.stripeWidth) | 0);
-
-    var bpPerBlock = Math.round(this.stripeWidth / this.pxPerBp);
-
-    var startBase = Math.round(this.pxToBp((leftVisible * this.stripeWidth)
-                                           + this.offset));
-
+    var startBase = this.blockIndexToBp(this.leftBlock(false, pos.x));
     startBase -= 1;
-    
+
+    alert(this.leftBlock() + " " + startBase + " " + this.rightBlock()+ " " + this.blockIndexToBp(this.rightBlock()));
+
 
     var containerStart = Math.round(this.pxToBp(this.offset));
     var containerEnd =
         Math.round(this.pxToBp(this.offset
                                + (this.stripeCount * this.stripeWidth)));
+
+    this.overviewTrackIterate(function(track) {track.clear();});
+    this.trackIterate(function(track) {track.clear();});
+
     this.overviewTrackIterate(function(track, view) {
                                   track.showRange(0, view.overviewStripes - 1,
                                                   -1, view.overviewStripeBases,
@@ -1985,8 +2055,8 @@ GenomeView.prototype.showVisibleBlocks = function(updateHeight, pos, startX, end
                                                   (view.ref.end - view.ref.start));
                       });
     this.trackIterate(function(track, view) {
-                          track.showRange(leftVisible, rightVisible,
-                                          startBase, bpPerBlock,
+                          track.showRange(this.leftBlock(), this.rightBlock(),
+                                          startBase, this._bpPerBlock(),
                                           view.pxPerBp,
                                           containerStart, containerEnd);
                       });
@@ -1999,6 +2069,12 @@ GenomeView.prototype.showVisibleBlocks = function(updateHeight, pos, startX, end
                               });
 
     this.browser.publish( '/jbrowse/v1/n/tracks/redraw' );
+    var msg = "";
+    for(var i = 0; i < this.staticTrack.numBlocks; i++) {
+      msg = msg + (this.staticTrack.blocks[i] ? this.staticTrack.blocks[i].startBase + "\n" : "");
+    }
+    alert(msg);
+
 };
 
 /**
