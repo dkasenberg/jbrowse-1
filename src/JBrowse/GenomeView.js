@@ -1904,12 +1904,14 @@ GenomeView.prototype.scrollUpdate = function() {
     //stripes end up in the same place.
 
     var dStripes = (dx / this.stripeWidth) | 0;
+    if(dStripes > 0) alert(dStripes);
     if (0 == dStripes) return;
     var changedStripes = Math.abs(dStripes);
 
     var newOffset = this.offset - (dStripes * this.stripeWidth);
 
-    this.trackIterate(function(track) { track.moveBlocks(dStripes); });
+    var numWraps = this.numWraps(this.pxToBp(x + this.offset));
+    this.trackIterate(function(track) { numWraps > 16 ? track.moveBlocksWithAlert(dStripes) : track.moveBlocks(dStripes); });
 
     if (this.offset == newOffset) return;
     this.offset = newOffset;
@@ -2007,7 +2009,25 @@ GenomeView.prototype.numWraps = function(bp, offset) {
   return Math.round((bp - this.wrapBp(bp,offset))/(this.ref.end-this.ref.start));
 }
 
+GenomeView.prototype.seqWidth = function() {
+  return Math.round(this.bpToPx(this.ref.end - this.ref.start));
+}
+
+GenomeView.prototype.wrapPx = function(px) {
+  var dist = this.seqWidth();
+  return ((px % dist) + dist) % dist;
+}
+
+// I don't know yet if this does what I want it to
+GenomeView.prototype.correctView = function() {
+  var x = this.getX();
+  this.offset += x - this.wrapPx(x);
+  this.setX(this.wrapPx(x));
+  this.offset = this.wrapPx(x + this.offset) - x;
+}
+
 GenomeView.prototype.showVisibleBlocks = function(updateHeight, pos, startX, endX) {
+
     if (pos === undefined) pos = this.getPosition();
     if (startX === undefined) startX = pos.x - (this.drawMargin * this.getWidth());
     if (endX === undefined) endX = pos.x + ((1 + this.drawMargin) * this.getWidth());
@@ -2016,17 +2036,30 @@ GenomeView.prototype.showVisibleBlocks = function(updateHeight, pos, startX, end
     var renderOffsetPerWrap = 1 - (this.ref.end % bpPerBlock + 1)/(bpPerBlock);
     var numWraps = this.numWraps(this.pxToBp(pos.x + this.offset));
 
+    /*
     var leftVisible = Math.max(0, (startX / this.stripeWidth + Math.floor(numWraps*renderOffsetPerWrap)) | 0);
     var rightVisible = Math.min(this.stripeCount - 1,
                                (endX / this.stripeWidth + Math.ceil(numWraps*renderOffsetPerWrap)) | 0);
+    /**/
+    
+    var leftVisible = (startX / this.stripeWidth + Math.floor(numWraps*renderOffsetPerWrap)) | 0;
+    var rightVisible = (endX / this.stripeWidth + Math.ceil(numWraps*renderOffsetPerWrap)) | 0;
 
+    
+    var dStripes = 0;
+    if(rightVisible > this.stripeCount - 1) dStripes = this.stripeCount - 1 - rightVisible;
+    else if (leftVisible < 0) dStripes = 0 - leftVisible;
+    if (dStripes != 0) {
+        leftVisible += dStripes;
+        rightVisible += dStripes;
+        this.trackIterate(function(track) { track.moveBlocks(dStripes, false); });
+    }/**/
 
-    if(rightVisible >= this.stripeCount-1) alert((endX / this.stripeWidth + Math.ceil(numWraps*renderOffsetPerWrap)) + " " + (this.stripeCount - 1));
     var startBase = Math.round(this.pxToBp((leftVisible * this.stripeWidth)
                                            + this.offset));
+    //alert(startBase + "\n" + (this.staticTrack.blocks[leftVisible] ? this.staticTrack.blocks[leftVisible].startBase : "-"));
 
     startBase -= 1;
-    alert(startBase);
 
     var containerStart = Math.round(this.pxToBp(this.offset));
     var containerEnd =

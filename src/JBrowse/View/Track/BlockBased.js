@@ -357,9 +357,9 @@ return declare( [Component,DetailsMixin,Destroyable],
             this.rightBlank.style.left = "50%";
             this.rightBlank.style.width = "50%";
         } else {
-            this.leftBlank.style.width = this.blocks[this.firstAttached].left + "%";
+            this.leftBlank.style.width = Math.max(this.blocks[this.firstAttached].left,0) + "%";
             this.rightBlank.style.left = this.blocks[this.lastAttached].left + this.blocks[this.lastAttached].width + "%";
-            this.rightBlank.style.width = 100 - (this.blocks[this.lastAttached].left + this.blocks[this.lastAttached].width) + "%";
+            this.rightBlank.style.width = Math.max(0,100 - (this.blocks[this.lastAttached].left + this.blocks[this.lastAttached].width)) + "%";
         }
     },
 
@@ -500,6 +500,7 @@ return declare( [Component,DetailsMixin,Destroyable],
         }
 
         if (this.blocks[blockIndex]) {
+            //if(Math.abs(this.blocks[blockIndex].startBase - startBase) > 2) alert(this.blocks[blockIndex].startBase + " " + startBase);
             this.heightUpdate(this.blockHeights[blockIndex], blockIndex);
             return;
         }
@@ -586,10 +587,27 @@ return declare( [Component,DetailsMixin,Destroyable],
         }
     },
 
-    moveBlocks: function(delta) {
+    moveBlocksWithAlert: function(delta) {
+        this.msg = "";
+        for(var i = 0; i < this.numBlocks; i++) {
+            if(this.blocks[i]) this.msg = this.msg + this.blocks[i].left + " ";
+            else this.msg = this.msg + "- ";
+        }
+        this.msg = this.msg + "\n";
+        this.moveBlocks(delta);
+        for(var i = 0; i < this.numBlocks; i++) {
+            if(this.blocks[i]) this.msg = this.msg + this.blocks[i].left + " ";
+            else this.msg = this.msg + "- ";
+        }
+        this.msg = this.msg + "\n";
+        alert(this.msg);
+    },
+
+    moveBlocks: function(delta, adjustLeft) {
+        if(adjustLeft === undefined) adjustLeft = true;
         var newBlocks = new Array(this.numBlocks);
         var newHeights = new Array(this.numBlocks);
-
+        this.msg = this.msg + "DELTA " + delta + " ";
         var i;
         for (i = 0; i < this.numBlocks; i++) {
             newHeights[i] = 0;
@@ -611,18 +629,18 @@ return declare( [Component,DetailsMixin,Destroyable],
         }
         for (i = 0; i < this.blocks.length; i++) {
             var newIndex = i + delta;
-
             if ((newIndex < 0) || (newIndex >= this.numBlocks)) {
                 //We're not keeping this block around, so delete
                 //the old one.
                 if (destBlock && this.blocks[i])
                     this.transfer(this.blocks[i], destBlock);
                 this._hideBlock(i);
+                this.msg = this.msg + "N ";
             } else {
                 //move block
 
                 newBlocks[newIndex] = this.blocks[i];
-                if (newBlocks[newIndex]) {
+                if (adjustLeft && newBlocks[newIndex]) {
 
                     var prevBlock = newBlocks[newIndex - 1];
                     var leftOffset =  this.refSeq.circular && newBlocks[newIndex].endBase > this.refSeq.end ?
@@ -633,11 +651,14 @@ return declare( [Component,DetailsMixin,Destroyable],
                     
                 }
                 newHeights[newIndex] = this.blockHeights[i];
+                this.msg = this.msg + "P ";
             }
         }
         this.blocks = newBlocks;
         this.blockHeights = newHeights;
         this._adjustBlanks();
+
+        this.msg = this.msg + "\n";
         
     },
 
