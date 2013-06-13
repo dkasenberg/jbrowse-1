@@ -17,6 +17,7 @@ define( [
             'dijit/MenuItem',
             'dijit/CheckedMenuItem',
             'dijit/MenuSeparator',
+            'dijit/form/TextBox',
             'JBrowse/Util',
             'JBrowse/Component',
             'JBrowse/Errors',
@@ -43,6 +44,7 @@ define( [
                   dijitMenuItem,
                   dijitCheckedMenuItem,
                   dijitMenuSeparator,
+                  dijitTextBox,
                   Util,
                   Component,
                   Errors,
@@ -159,8 +161,49 @@ return declare( [Component,DetailsMixin,Destroyable],
                 this.browser.publish( '/jbrowse/v1/v/tracks/hide', [this.config]);
                 evt.stopPropagation();
         })));
-
+        var renameBox = dojo.create('input', { type: 'text', style: { display: "none" } }, labelDiv );
         var labelText = dojo.create('span', { className: 'track-label-text' }, labelDiv );
+
+        this.own( on( labelText, 'dblclick', dojo.hitch(this, function(evt){
+                renameBox.style.width = Math.max(70, 1.3*(labelText.offsetWidth)) + "px";
+                labelText.style.display = "none";
+                renameBox.style.display = "";
+                renameBox.value = labelText.innerHTML;
+                renameBox.select();
+                evt.stopPropagation();
+        })));
+
+        var cancelRename = dojo.hitch(this, function() {
+            labelText.style.display = "";
+            renameBox.style.display = "none";
+            labelText.innerHTML = this.labelHTML;
+        });
+
+        this.own( on( renameBox, 'click', dojo.hitch(this, function(evt){
+                renameBox.select();
+                evt.stopPropagation();
+        })));
+
+        this.own( on( renameBox, 'keyup', dojo.hitch(this, function(evt){
+                if(evt.keyCode == 13) {
+                    labelText.style.display = "";
+                    renameBox.style.display = "none";
+                    this.setLabel(renameBox.value);
+                } else if(evt.keyCode == 27) {
+                    cancelRename();
+                } else {
+                    labelText.style.display = "";
+                    labelText.innerHTML = renameBox.value;
+                    renameBox.style.width = Math.max(70, 1.3*(labelText.offsetWidth)) + "px";
+                    labelText.style.display = "none";
+                }
+                evt.stopPropagation();
+        })));
+
+        this.own( on( renameBox, 'blur', dojo.hitch(this, function(evt) {
+            cancelRename();
+        })));
+
         var menuButton = dojo.create('div',{
             className: 'track-menu-button'
         },labelDiv);
