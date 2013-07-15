@@ -25,6 +25,8 @@ return dojo.declare( BlockBased,
     makeTrackLabel: function() {},
     makeTrackMenu: function() {},
 
+    makeSplitter: function(){},
+
     fillBlock: function( args ) {
         this.renderGridlines( args.block, args.leftBase, args.rightBase );
         args.finishCallback();

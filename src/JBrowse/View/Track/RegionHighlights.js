@@ -14,6 +14,8 @@ return dojo.declare( BlockBased,
     makeTrackLabel: function() {},
     makeTrackMenu: function() {},
 
+    makeSplitter: function(){},
+
     fillBlock: function( args ) {
         console.log('fill highlights', args );
         var highlight = this.browser.getHighlight();

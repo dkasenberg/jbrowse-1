@@ -1090,3 +1090,11 @@ table.baseQuality td {
     display: block;
     text-align: center;
 }
+
+.track_splitter {
+    background-color: black;
+    cursor: row-resize;
+    position: relative;
+    height: 3px;
+    z-index: 40;
+}

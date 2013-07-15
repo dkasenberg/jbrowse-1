@@ -30,6 +30,8 @@ return declare(BlockBased,
     makeTrackLabel: function() {},
     makeTrackMenu: function() {},
 
+    makeSplitter: function(){},
+
     fillBlock: function( args ) {
         var blockIndex = args.blockIndex;
         var block = args.block;

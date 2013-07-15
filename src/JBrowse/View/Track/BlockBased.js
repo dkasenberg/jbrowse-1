@@ -82,7 +82,7 @@ return declare( [Component,DetailsMixin,FeatureFiltererMixin,Destroyable],
         // set up feature filtering
         this.setFeatureFilterParentComponent( this.genomeView );
 
-        this.store = args.store;
+        this.store = args.store; 
     },
 
     /**
@@ -96,6 +96,10 @@ return declare( [Component,DetailsMixin,FeatureFiltererMixin,Destroyable],
 
     heightUpdate: function(height, blockIndex) {
 
+        if(!blockIndex) console.log(this.key + " heightUpdate (" + height + ")" + arguments.callee.caller.nom)
+        if(this.splitter)
+            this.splitter.style.top = this.height + "px";
+        
         if (!this.shown) {
             this.heightUpdateCallback(0);
             return;
@@ -142,6 +146,7 @@ return declare( [Component,DetailsMixin,FeatureFiltererMixin,Destroyable],
             this.makeTrackLabel();
         }
         this.setLabel( this.key );
+        this.makeSplitter();
     },
 
     makeTrackLabel: function() {
@@ -181,6 +186,47 @@ return declare( [Component,DetailsMixin,FeatureFiltererMixin,Destroyable],
         this.makeTrackMenu();
     },
 
+    makeSplitter: function() {
+        this.splitter = dojo.create(
+            'div', {
+                className: "track_splitter",
+                id: "splitter_" + this.name,
+                innerHTML: "Your mother was a hamster"
+
+            },this.div);
+        var thisB = this;
+        this.own( on(this.splitter, "mousedown", dojo.hitch(this, "startResize")));
+    },
+
+    startResize: function( event ) {
+        console.log(this.height);
+        this.resizing = true;
+        this.lastY = event.clientY;
+        this.origHeight = parseInt( this.height );
+
+        this.moveSignal = on(this.div.parentNode, "mousemove", dojo.hitch(this, "midResize"));
+        this.upSignal = on(this.div.parentNode, "mouseup", dojo.hitch(this, "endResize"));
+        this.own(this.moveSignal);
+        this.own(this.upSignal);
+
+    },
+
+    midResize: function( event ) {
+        if(this.resizing) {
+            this.height = this.origHeight + event.clientY - this.lastY;
+            this.splitter.style.top = this.height + "px";
+
+        }
+    },
+
+    endResize: function( event ) {
+        if(this.resizing) {
+            this._resize(this.height); // Should be overridden in derived classes
+            this.resizing = false;
+        }
+        this.moveSignal.remove();
+        this.upSignal.remove();
+    },
 
     hide: function() {
         if (this.shown) {
