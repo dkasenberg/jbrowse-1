@@ -83,6 +83,12 @@ return declare( [BlockBasedTrack,ExportMixin], {
         return parseInt(( this.config.style || {}).height) || 100;
     },
 
+    resize: function( height ) {
+        delete this.lastScaling;
+        this.config.style.height = height;
+        this.inherited(arguments);
+    },
+
     _getBlockFeatures: function( args ) {
             var thisB = this;
             var blockIndex = args.blockIndex;

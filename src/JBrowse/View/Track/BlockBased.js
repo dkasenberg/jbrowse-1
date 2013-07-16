@@ -96,7 +96,6 @@ return declare( [Component,DetailsMixin,FeatureFiltererMixin,Destroyable],
 
     heightUpdate: function(height, blockIndex) {
 
-        if(!blockIndex) console.log(this.key + " heightUpdate (" + height + ")" + arguments.callee.caller.nom)
         if(this.splitter)
             this.splitter.style.top = this.height + "px";
         
@@ -195,37 +194,43 @@ return declare( [Component,DetailsMixin,FeatureFiltererMixin,Destroyable],
 
             },this.div);
         var thisB = this;
-        this.own( on(this.splitter, "mousedown", dojo.hitch(this, "startResize")));
+        this.own( on(this.splitter, "mousedown", dojo.hitch(this, "_startResize")));
     },
 
-    startResize: function( event ) {
-        console.log(this.height);
+    _startResize: function( event ) {
         this.resizing = true;
         this.lastY = event.clientY;
         this.origHeight = parseInt( this.height );
 
-        this.moveSignal = on(this.div.parentNode, "mousemove", dojo.hitch(this, "midResize"));
-        this.upSignal = on(this.div.parentNode, "mouseup", dojo.hitch(this, "endResize"));
+        this.moveSignal = on(this.div.parentNode, "mousemove", dojo.hitch(this, "_midResize"));
+        this.upSignal = on(this.div.parentNode, "mouseup", dojo.hitch(this, "_endResize"));
         this.own(this.moveSignal);
         this.own(this.upSignal);
-
+        event.stopPropagation();
     },
 
-    midResize: function( event ) {
+    _midResize: function( event ) {
         if(this.resizing) {
             this.height = this.origHeight + event.clientY - this.lastY;
             this.splitter.style.top = this.height + "px";
-
+            event.stopPropagation();
         }
     },
 
-    endResize: function( event ) {
+    _endResize: function( event ) {
         if(this.resizing) {
-            this._resize(this.height); // Should be overridden in derived classes
+            this.resize(this.height); // Should be overridden in derived classes
             this.resizing = false;
         }
         this.moveSignal.remove();
         this.upSignal.remove();
+        event.stopPropagation();
+    },
+
+    resize: function( height ) {
+        this.resizeHeight = height;
+        this.hideAll();
+        this.genomeView.showVisibleBlocks(true);
     },
 
     hide: function() {
@@ -304,7 +309,7 @@ return declare( [Component,DetailsMixin,FeatureFiltererMixin,Destroyable],
             this.labelHeight = this.label.offsetHeight;
 
         this.inShowRange = true;
-        this.height = this.labelHeight;
+        this.height = Math.max(this.resizeHeight || 0, this.labelHeight);
 
         var firstAttached = (null == this.firstAttached ? last + 1 : this.firstAttached);
         var lastAttached =  (null == this.lastAttached ? first - 1 : this.lastAttached);
