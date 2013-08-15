@@ -14,7 +14,9 @@ define([
            'JBrowse/BehaviorManager',
            'JBrowse/View/Animation/Zoomer',
            'JBrowse/View/Animation/Slider',
-           'JBrowse/View/InfoDialog'
+           'JBrowse/View/InfoDialog',
+           'FileSaver/FileSaver',
+           'KineticJS/Kinetic'
        ], function(
            declare,
            array,
@@ -31,7 +33,9 @@ define([
            BehaviorManager,
            Zoomer,
            Slider,
-           InfoDialog
+           InfoDialog,
+           FileSaver,
+           Kinetic
        ) {
 
 var dojof = Util.dojof;
@@ -1975,7 +1979,45 @@ trackHeightUpdate: function(trackName, height) {
     this.updateStaticElements({ height: this.getHeight() });
 },
 
+kineticTest: function() {
+    domConstruct.destroy( 'kineticContainer' );
+    var kineticContainer = domConstruct.create( 'div', { id: 'kineticContainer', style: { position: 'fixed', zIndex: 9999, top: this.elem.style.top, left: this.elem.style.left } }, this.elem);
+    var stage = new Kinetic.Stage({container: 'kineticContainer', width: this.elem.clientWidth*2, height: this.elem.clientHeight*2 });
+    var layer = new Kinetic.Layer();
+
+    var r = 255;
+    var g = 0;
+    var b = 0;
+
+    var wedge = new Kinetic.Wedge({
+        x: stage.getWidth()/4,
+        y: stage.getHeight()*2,
+        radius: stage.getHeight()*2,
+        angleDeg: 180,
+        fill: 'rgba(' + r + ', ' + g + ', ' + b + ', 1)',
+        stroke: 'black',
+        strokeWidth: 4,
+        rotationDeg: 180
+    });
+    var sign = 1;
+
+    wedge.on('mousemove', dojo.hitch(this, function(evt) {
+      if(r == 0 || r == 255)
+        sign = (-1)*sign;
+      r += sign*5;
+      g -= sign*5;
+      b -= sign*5;
+      wedge.setFill('rgba(' + r + ', ' + g + ', ' + b + ', 1)');
+      layer.draw();
+    }));
+
+    layer.add(wedge);
+    stage.add(layer);
+},
+
 showVisibleBlocks: function(updateHeight, pos, startX, endX) {
+    this.kineticTest();
+    
     if (pos === undefined) pos = this.getPosition();
     if (startX === undefined) startX = pos.x - (this.drawMargin * this.getWidth());
     if (endX === undefined) endX = pos.x + ((1 + this.drawMargin) * this.getWidth());
